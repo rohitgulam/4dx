@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { calculateWigProgress } from '../utils/wig-progress'
+
 definePageMeta({
   layout: false,
 })
@@ -34,10 +36,6 @@ const weekLabel = computed(() => {
 onMounted(async () => {
   await fetchWigs()
 })
-
-function wigProgress(currentValue: number, targetValue: number) {
-  return Math.max(0, Math.min(100, Math.round((currentValue / Math.max(targetValue, 1)) * 100)))
-}
 
 function formatDeadline(deadline: string) {
   return new Date(deadline).toLocaleDateString('en-US', {
@@ -174,11 +172,23 @@ async function logout() {
                       <div class="flex items-center justify-between gap-4 text-sm">
                         <span class="font-medium text-highlighted">Progress</span>
                         <span class="text-muted"
-                          >{{ wigProgress(record.currentValue, record.targetValue) }}%</span
+                          >{{
+                            calculateWigProgress(
+                              record.startValue,
+                              record.currentValue,
+                              record.targetValue,
+                            )
+                          }}%</span
                         >
                       </div>
                       <UProgress
-                        :model-value="wigProgress(record.currentValue, record.targetValue)"
+                        :model-value="
+                          calculateWigProgress(
+                            record.startValue,
+                            record.currentValue,
+                            record.targetValue,
+                          )
+                        "
                         color="primary"
                       />
                     </div>

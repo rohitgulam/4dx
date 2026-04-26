@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { CalendarDate } from '@internationalized/date'
+import { calculateWigProgress } from '../utils/wig-progress'
 
 definePageMeta({
   layout: false,
@@ -167,13 +168,7 @@ async function saveWig() {
               </div>
               <UProgress
                 :model-value="
-                  Math.max(
-                    0,
-                    Math.min(
-                      100,
-                      Math.round((wigForm.currentValue / Math.max(wigForm.targetValue, 1)) * 100)
-                    )
-                  )
+                  calculateWigProgress(wigForm.startValue, wigForm.currentValue, wigForm.targetValue)
                 "
                 color="primary"
               />

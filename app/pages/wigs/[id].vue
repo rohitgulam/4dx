@@ -2,6 +2,7 @@
 import { h, resolveComponent } from 'vue'
 import { CalendarDate, parseDate } from '@internationalized/date'
 import type { TableColumn } from '@nuxt/ui'
+import { calculateRemainingToGoal, calculateWigProgress } from '../../utils/wig-progress'
 
 definePageMeta({
   layout: false,
@@ -88,10 +89,7 @@ const leadMeasureSorting = ref([
 ])
 
 const progress = computed(() => {
-  return Math.max(
-    0,
-    Math.min(100, Math.round((wigView.currentValue / Math.max(wigView.targetValue, 1)) * 100))
-  )
+  return calculateWigProgress(wigView.startValue, wigView.currentValue, wigView.targetValue)
 })
 
 const completedLeadMeasures = computed(
@@ -102,7 +100,9 @@ const scheduledLeadMeasures = computed(
   () => leadMeasures.value.filter((leadMeasure) => leadMeasure.status === 'scheduled').length
 )
 
-const remainingToGoal = computed(() => Math.max(wigView.targetValue - wigView.currentValue, 0))
+const remainingToGoal = computed(() =>
+  calculateRemainingToGoal(wigView.startValue, wigView.currentValue, wigView.targetValue)
+)
 const totalLeadMeasures = computed(() => leadMeasures.value.length)
 
 const wigStatus = computed(() => {

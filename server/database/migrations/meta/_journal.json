@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1775643807738,
-      "tag": "0000_amused_lilith",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1775643807739,
-      "tag": "0001_lucky_wig",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1775643807740,
-      "tag": "0002_simple_lead_measures",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1775643807741,
-      "tag": "0003_wig_completion",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1775643807742,
-      "tag": "0004_weekly_accountability",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1775643807743,
-      "tag": "0005_wig_description",
+      "when": 1777216384207,
+      "tag": "0000_thin_tomorrow_man",
       "breakpoints": true
     }
   ]
