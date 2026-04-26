@@ -13,6 +13,7 @@ export type CreateWigInput = {
   currentValue: number
   targetValue: number
   deadline: Date
+  completedAt?: Date | null
 }
 
 export type UpdateWigInput = {
@@ -22,6 +23,7 @@ export type UpdateWigInput = {
   currentValue?: number
   targetValue?: number
   deadline?: Date
+  completedAt?: Date | null
 }
 
 export async function createWig(input: CreateWigInput) {
@@ -35,7 +37,8 @@ export async function createWig(input: CreateWigInput) {
       startValue: input.startValue,
       currentValue: input.currentValue,
       targetValue: input.targetValue,
-      deadline: input.deadline
+      deadline: input.deadline,
+      completedAt: input.completedAt ?? null
     } satisfies NewWig)
     .returning()
 
@@ -82,4 +85,13 @@ export async function updateWigById(id: string, input: UpdateWigInput) {
     .returning()
 
   return updatedWig ?? null
+}
+
+export async function deleteWigById(id: string) {
+  const [deletedWig] = await useDrizzle()
+    .delete(wigs)
+    .where(eq(wigs.id, id))
+    .returning()
+
+  return deletedWig ?? null
 }

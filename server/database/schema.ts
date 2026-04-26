@@ -86,12 +86,36 @@ export const wigs = pgTable(
     currentValue: integer('current_value').notNull(),
     targetValue: integer('target_value').notNull(),
     deadline: timestamp('deadline', { withTimezone: true }).notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index('wigs_workspace_id_idx').on(table.workspaceId),
     index('wigs_created_by_user_id_idx').on(table.createdByUserId)
+  ]
+)
+
+export const leadMeasureStatusEnum = pgEnum('lead_measure_status', ['scheduled', 'completed'])
+
+export const leadMeasures = pgTable(
+  'lead_measures',
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    wigId: uuid('wig_id')
+      .notNull()
+      .references(() => wigs.id, { onDelete: 'cascade' }),
+    title: text().notNull(),
+    description: text(),
+    status: leadMeasureStatusEnum('status').notNull().default('scheduled'),
+    scheduledDate: timestamp('scheduled_date', { withTimezone: true }).notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => [
+    index('lead_measures_wig_id_idx').on(table.wigId),
+    index('lead_measures_status_idx').on(table.status)
   ]
 )
 
@@ -109,3 +133,6 @@ export type NewAuthAccount = typeof authAccounts.$inferInsert
 
 export type Wig = typeof wigs.$inferSelect
 export type NewWig = typeof wigs.$inferInsert
+
+export type LeadMeasure = typeof leadMeasures.$inferSelect
+export type NewLeadMeasure = typeof leadMeasures.$inferInsert

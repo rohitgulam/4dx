@@ -32,6 +32,7 @@ export default defineEventHandler(async (event) => {
       currentValue: wig.currentValue,
       targetValue: wig.targetValue,
       deadline: wig.deadline.toISOString(),
+      completedAt: wig.completedAt?.toISOString() ?? null,
       workspaceId: wig.workspaceId,
       createdByUserId: wig.createdByUserId,
       createdAt: wig.createdAt.toISOString(),

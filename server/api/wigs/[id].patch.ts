@@ -29,7 +29,8 @@ export default defineEventHandler(async (event) => {
     startValue: z.number().int().optional(),
     currentValue: z.number().int().optional(),
     targetValue: z.number().int().optional(),
-    deadline: z.string().date().optional()
+    deadline: z.string().date().optional(),
+    completed: z.boolean().optional()
   }).refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required'
   })
@@ -68,7 +69,13 @@ export default defineEventHandler(async (event) => {
     startValue: parsed.data.startValue,
     currentValue: parsed.data.currentValue,
     targetValue: parsed.data.targetValue,
-    deadline: parsed.data.deadline ? new Date(`${parsed.data.deadline}T00:00:00.000Z`) : undefined
+    deadline: parsed.data.deadline ? new Date(`${parsed.data.deadline}T00:00:00.000Z`) : undefined,
+    completedAt:
+      parsed.data.completed === undefined
+        ? undefined
+        : parsed.data.completed
+          ? existingWig.completedAt ?? new Date()
+          : null
   })
 
   if (!updatedWig) {
@@ -87,6 +94,7 @@ export default defineEventHandler(async (event) => {
       currentValue: updatedWig.currentValue,
       targetValue: updatedWig.targetValue,
       deadline: updatedWig.deadline.toISOString(),
+      completedAt: updatedWig.completedAt?.toISOString() ?? null,
       workspaceId: updatedWig.workspaceId,
       createdByUserId: updatedWig.createdByUserId,
       createdAt: updatedWig.createdAt.toISOString(),

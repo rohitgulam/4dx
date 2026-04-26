@@ -5,10 +5,12 @@ type WigPayload = {
   currentValue: number
   targetValue: number
   deadline: string
+  completed?: boolean
 }
 
 export type WigRecord = WigPayload & {
   id: string
+  completedAt: string | null
   workspaceId: string
   createdByUserId: string
   createdAt: string
@@ -75,6 +77,24 @@ export function useWig() {
     }
   }
 
+  async function deleteWig(id: string) {
+    pending.value = true
+
+    try {
+      await $fetch<{ success: true }>(`/api/wigs/${id}`, {
+        method: 'DELETE'
+      })
+
+      wigs.value = wigs.value.filter(existing => existing.id !== id)
+
+      if (wig.value?.id === id) {
+        wig.value = null
+      }
+    } finally {
+      pending.value = false
+    }
+  }
+
   return {
     wig,
     wigs,
@@ -82,6 +102,7 @@ export function useWig() {
     fetchWigs,
     fetchWig,
     createWig,
-    updateWig
+    updateWig,
+    deleteWig
   }
 }

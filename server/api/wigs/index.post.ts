@@ -69,6 +69,7 @@ export default defineEventHandler(async (event) => {
       currentValue: createdWig.currentValue,
       targetValue: createdWig.targetValue,
       deadline: createdWig.deadline.toISOString(),
+      completedAt: createdWig.completedAt?.toISOString() ?? null,
       workspaceId: createdWig.workspaceId,
       createdByUserId: createdWig.createdByUserId,
       createdAt: createdWig.createdAt.toISOString(),

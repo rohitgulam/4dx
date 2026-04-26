@@ -15,6 +15,20 @@
       "when": 1775643807739,
       "tag": "0001_lucky_wig",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775643807740,
+      "tag": "0002_simple_lead_measures",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775643807741,
+      "tag": "0003_wig_completion",
+      "breakpoints": true
     }
   ]
 }
