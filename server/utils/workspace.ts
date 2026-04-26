@@ -1,3 +1,5 @@
+import { eq } from 'drizzle-orm'
+
 import {
   type NewWorkspace,
   type NewWorkspaceMember,
@@ -39,4 +41,20 @@ export async function createDefaultWorkspaceForUser(user: {
 
     return createdWorkspace
   })
+}
+
+export async function findPrimaryWorkspaceForUser(userId: string) {
+  const [workspace] = await useDrizzle()
+    .select({
+      id: workspaces.id,
+      name: workspaces.name,
+      createdAt: workspaces.createdAt,
+      updatedAt: workspaces.updatedAt
+    })
+    .from(workspaceMembers)
+    .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
+    .where(eq(workspaceMembers.userId, userId))
+    .limit(1)
+
+  return workspace ?? null
 }

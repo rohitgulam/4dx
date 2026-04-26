@@ -1,5 +1,6 @@
 import {
   boolean,
+  integer,
   index,
   pgEnum,
   pgTable,
@@ -69,6 +70,31 @@ export const workspaceMembers = pgTable(
   ]
 )
 
+export const wigs = pgTable(
+  'wigs',
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text().notNull(),
+    unit: text().notNull(),
+    startValue: integer('start_value').notNull(),
+    currentValue: integer('current_value').notNull(),
+    targetValue: integer('target_value').notNull(),
+    deadline: timestamp('deadline', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('wigs_workspace_id_idx').on(table.workspaceId),
+    index('wigs_created_by_user_id_idx').on(table.createdByUserId)
+  ]
+)
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 
@@ -80,3 +106,6 @@ export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert
 
 export type AuthAccount = typeof authAccounts.$inferSelect
 export type NewAuthAccount = typeof authAccounts.$inferInsert
+
+export type Wig = typeof wigs.$inferSelect
+export type NewWig = typeof wigs.$inferInsert
