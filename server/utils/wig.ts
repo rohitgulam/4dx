@@ -8,6 +8,7 @@ export type CreateWigInput = {
   workspaceId: string
   createdByUserId: string
   title: string
+  description?: string | null
   unit: string
   startValue: number
   currentValue: number
@@ -18,6 +19,7 @@ export type CreateWigInput = {
 
 export type UpdateWigInput = {
   title?: string
+  description?: string | null
   unit?: string
   startValue?: number
   currentValue?: number
@@ -33,6 +35,7 @@ export async function createWig(input: CreateWigInput) {
       workspaceId: input.workspaceId,
       createdByUserId: input.createdByUserId,
       title: input.title,
+      description: input.description ?? null,
       unit: input.unit,
       startValue: input.startValue,
       currentValue: input.currentValue,

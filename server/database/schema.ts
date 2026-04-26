@@ -81,6 +81,7 @@ export const wigs = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     title: text().notNull(),
+    description: text(),
     unit: text().notNull(),
     startValue: integer('start_value').notNull(),
     currentValue: integer('current_value').notNull(),

@@ -1,5 +1,6 @@
 type WigPayload = {
   title: string
+  description?: string | null
   unit: string
   startValue: number
   currentValue: number

@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
 
   const schema = z.object({
     title: z.string().trim().min(1).optional(),
+    description: z.string().trim().optional().nullable(),
     unit: z.string().trim().min(1).optional(),
     startValue: z.number().int().optional(),
     currentValue: z.number().int().optional(),
@@ -65,6 +66,7 @@ export default defineEventHandler(async (event) => {
 
   const updatedWig = await updateWigById(wigId, {
     title: parsed.data.title,
+    description: parsed.data.description,
     unit: parsed.data.unit,
     startValue: parsed.data.startValue,
     currentValue: parsed.data.currentValue,
@@ -89,6 +91,7 @@ export default defineEventHandler(async (event) => {
     wig: {
       id: updatedWig.id,
       title: updatedWig.title,
+      description: updatedWig.description,
       unit: updatedWig.unit,
       startValue: updatedWig.startValue,
       currentValue: updatedWig.currentValue,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { h, resolveComponent } from 'vue'
+import { CalendarDate, parseDate } from '@internationalized/date'
 import type { TableColumn } from '@nuxt/ui'
 
 definePageMeta({
@@ -35,9 +36,11 @@ const UButton = resolveComponent('UButton')
 const UBadge = resolveComponent('UBadge')
 
 const wigId = computed(() => String(route.params.id || ''))
+const editWigDeadline = shallowRef<CalendarDate | null>(null)
 
 const wigView = reactive({
   title: '',
+  description: '',
   startValue: 0,
   currentValue: 0,
   targetValue: 0,
@@ -48,6 +51,7 @@ const wigView = reactive({
 
 const editWigForm = reactive({
   title: '',
+  description: '',
   startValue: 0,
   currentValue: 0,
   targetValue: 0,
@@ -294,6 +298,7 @@ function syncWigView(record: Awaited<ReturnType<ReturnType<typeof useWig>['fetch
   }
 
   wigView.title = record.title
+  wigView.description = record.description || ''
   wigView.startValue = record.startValue
   wigView.currentValue = record.currentValue
   wigView.targetValue = record.targetValue
@@ -365,11 +370,13 @@ function resetWeeklyAccountabilityForm() {
 
 function openWigModal() {
   editWigForm.title = wigView.title
+  editWigForm.description = wigView.description
   editWigForm.startValue = wigView.startValue
   editWigForm.currentValue = wigView.currentValue
   editWigForm.targetValue = wigView.targetValue
   editWigForm.unit = wigView.unit
   editWigForm.deadline = wigView.deadline
+  editWigDeadline.value = wigView.deadline ? parseDate(wigView.deadline) : null
   editWigForm.completed = Boolean(wigView.completedAt)
   wigModalOpen.value = true
 }
@@ -438,11 +445,12 @@ async function saveWig() {
   try {
     const updatedWig = await updateWig(wigId.value, {
       title: editWigForm.title,
+      description: editWigForm.description || null,
       startValue: editWigForm.startValue,
       currentValue: editWigForm.currentValue,
       targetValue: editWigForm.targetValue,
       unit: editWigForm.unit,
-      deadline: editWigForm.deadline,
+      deadline: editWigDeadline.value ? editWigDeadline.value.toString() : '',
       completed: editWigForm.completed,
     })
 
@@ -625,6 +633,9 @@ async function removeWeeklyAccountability() {
             <h1 class="text-3xl font-semibold text-highlighted">
               {{ wigView.title || 'Wildly important goal' }}
             </h1>
+            <p v-if="wigView.description" class="text-sm text-muted">
+              {{ wigView.description }}
+            </p>
             <p class="text-sm text-muted">
               {{ wigStatus.description }}
             </p>
@@ -935,6 +946,10 @@ async function removeWeeklyAccountability() {
             <UInput v-model="editWigForm.title" class="w-full" />
           </UFormField>
 
+          <UFormField label="Description">
+            <UTextarea v-model="editWigForm.description" :rows="3" class="w-full" />
+          </UFormField>
+
           <div class="grid gap-4 md:grid-cols-2">
             <UFormField label="Starting point">
               <UInput v-model.number="editWigForm.startValue" class="w-full" type="number" />
@@ -951,7 +966,7 @@ async function removeWeeklyAccountability() {
           </div>
 
           <UFormField label="Deadline">
-            <UInput v-model="editWigForm.deadline" class="w-full" type="date" />
+            <UInputDate v-model="editWigDeadline" class="w-full" />
           </UFormField>
 
           <div class="rounded-2xl border border-default p-4">

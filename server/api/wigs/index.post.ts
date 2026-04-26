@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
 
   const schema = z.object({
     title: z.string().trim().min(1, 'Title is required'),
+    description: z.string().trim().optional().nullable(),
     unit: z.string().trim().min(1, 'Unit is required'),
     startValue: z.number().int(),
     currentValue: z.number().int(),
@@ -46,6 +47,7 @@ export default defineEventHandler(async (event) => {
     workspaceId: workspace.id,
     createdByUserId: userId,
     title: parsed.data.title,
+    description: parsed.data.description ?? null,
     unit: parsed.data.unit,
     startValue: parsed.data.startValue,
     currentValue: parsed.data.currentValue,
@@ -64,6 +66,7 @@ export default defineEventHandler(async (event) => {
     wig: {
       id: createdWig.id,
       title: createdWig.title,
+      description: createdWig.description,
       unit: createdWig.unit,
       startValue: createdWig.startValue,
       currentValue: createdWig.currentValue,

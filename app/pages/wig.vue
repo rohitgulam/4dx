@@ -1,29 +1,33 @@
 <script setup lang="ts">
+import { CalendarDate } from '@internationalized/date'
+
 definePageMeta({
   layout: false,
 })
 
 const toast = useToast()
 const { createWig, pending } = useWig()
+const deadline = shallowRef<CalendarDate | null>(null)
 
 const wigForm = reactive({
-  title: 'Increase paying users',
-  startValue: 53,
-  currentValue: 53,
-  targetValue: 150,
-  unit: 'paying users',
-  deadline: '2025-09-30',
+  title: '',
+  description: '',
+  startValue: 0,
+  currentValue: 0,
+  targetValue: 0,
+  unit: '',
 })
 
 async function saveWig() {
   try {
     const createdWig = await createWig({
       title: wigForm.title,
+      description: wigForm.description || null,
       startValue: wigForm.startValue,
       currentValue: wigForm.currentValue,
       targetValue: wigForm.targetValue,
       unit: wigForm.unit,
-      deadline: wigForm.deadline,
+      deadline: deadline.value ? deadline.value.toString() : '',
     })
 
     toast.add({
@@ -64,9 +68,6 @@ async function saveWig() {
           <div class="space-y-1">
             <p class="text-sm font-medium text-toned">WIG Setup</p>
             <h1 class="text-2xl font-semibold text-highlighted">Create a wildly important goal</h1>
-            <p class="text-sm text-muted">
-              Define the lag measure first. Lead measures and logging can hang off this record next.
-            </p>
           </div>
         </div>
 
@@ -87,33 +88,36 @@ async function saveWig() {
         <template #header>
           <div class="space-y-1">
             <p class="text-xs font-medium uppercase tracking-wide text-toned">WIG Details</p>
-            <p class="font-medium text-highlighted">This form saves directly to the new WIG API.</p>
           </div>
         </template>
 
         <div class="grid gap-4 md:grid-cols-2">
           <UFormField label="Title" class="md:col-span-2">
-            <UInput v-model="wigForm.title" placeholder="Increase paying users" />
+            <UInput v-model="wigForm.title" class="w-full" size="lg" />
+          </UFormField>
+
+          <UFormField label="Description" class="md:col-span-2">
+            <UTextarea v-model="wigForm.description" :rows="3" class="w-full" />
           </UFormField>
 
           <UFormField label="Starting point">
-            <UInput v-model.number="wigForm.startValue" type="number" />
+            <UInput v-model.number="wigForm.startValue" type="number" class="w-full" size="lg" />
           </UFormField>
 
           <UFormField label="Current value">
-            <UInput v-model.number="wigForm.currentValue" type="number" />
+            <UInput v-model.number="wigForm.currentValue" type="number" class="w-full" size="lg" />
           </UFormField>
 
           <UFormField label="Target value">
-            <UInput v-model.number="wigForm.targetValue" type="number" />
+            <UInput v-model.number="wigForm.targetValue" type="number" class="w-full" size="lg" />
           </UFormField>
 
           <UFormField label="Unit">
-            <UInput v-model="wigForm.unit" placeholder="paying users" />
+            <UInput v-model="wigForm.unit" class="w-full" size="lg" />
           </UFormField>
 
           <UFormField label="Deadline" class="md:col-span-2">
-            <UInput v-model="wigForm.deadline" type="date" />
+            <UInputDate v-model="deadline" class="w-full" size="lg" />
           </UFormField>
         </div>
 
@@ -146,8 +150,11 @@ async function saveWig() {
               <h2 class="mt-2 text-xl font-semibold text-highlighted">
                 {{ wigForm.startValue }} -> {{ wigForm.targetValue }} {{ wigForm.unit }}
               </h2>
-              <p class="mt-1 text-sm text-muted">
+              <p v-if="wigForm.title" class="mt-1 text-sm text-muted">
                 {{ wigForm.title }}
+              </p>
+              <p v-if="wigForm.description" class="mt-1 text-sm text-muted">
+                {{ wigForm.description }}
               </p>
             </div>
 
@@ -174,27 +181,18 @@ async function saveWig() {
 
             <div class="rounded-2xl border border-default p-4">
               <p class="text-xs font-medium uppercase tracking-wide text-toned">Deadline</p>
-              <p class="mt-2 font-medium text-highlighted">
+              <p v-if="deadline" class="mt-2 font-medium text-highlighted">
                 {{
-                  new Date(wigForm.deadline).toLocaleDateString('en-US', {
+                  new Date(deadline.toString()).toLocaleDateString('en-US', {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric',
                   })
                 }}
               </p>
+              <p v-else class="mt-2 text-sm text-muted">No date selected</p>
             </div>
           </div>
-        </UCard>
-
-        <UCard>
-          <template #header>
-            <p class="font-medium text-highlighted">What happens next</p>
-          </template>
-
-          <p class="text-sm text-muted">
-            After save, this WIG opens on its own detail page. That page is where lead measures will live next.
-          </p>
         </UCard>
       </div>
     </UContainer>

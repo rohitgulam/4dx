@@ -27,6 +27,7 @@ export default defineEventHandler(async (event) => {
     wigs: wigs.map((wig) => ({
       id: wig.id,
       title: wig.title,
+      description: wig.description,
       unit: wig.unit,
       startValue: wig.startValue,
       currentValue: wig.currentValue,
