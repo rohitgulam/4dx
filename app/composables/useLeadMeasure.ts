@@ -71,11 +71,26 @@ export function useLeadMeasure() {
     }
   }
 
+  async function deleteLeadMeasure(wigId: string, leadMeasureId: string) {
+    pending.value = true
+
+    try {
+      await $fetch<{ success: true }>(`/api/wigs/${wigId}/lead-measures/${leadMeasureId}`, {
+        method: 'DELETE'
+      })
+
+      leadMeasures.value = leadMeasures.value.filter((leadMeasure) => leadMeasure.id !== leadMeasureId)
+    } finally {
+      pending.value = false
+    }
+  }
+
   return {
     leadMeasures,
     pending,
     fetchLeadMeasures,
     createLeadMeasure,
-    updateLeadMeasure
+    updateLeadMeasure,
+    deleteLeadMeasure
   }
 }

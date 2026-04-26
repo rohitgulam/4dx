@@ -6,12 +6,27 @@ definePageMeta({
 const { user, clear } = useUserSession()
 const { wigs, fetchWigs, pending } = useWig()
 
-const weekLabel = computed(() =>
-  new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric'
-  }).format(new Date())
-)
+const weekLabel = computed(() => {
+  const today = new Date()
+  const day = today.getDay()
+  const diffToMonday = day === 0 ? -6 : 1 - day
+
+  const monday = new Date(today)
+  monday.setDate(today.getDate() + diffToMonday)
+  monday.setHours(0, 0, 0, 0)
+
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  const sameMonth = monday.getMonth() === sunday.getMonth()
+  const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
+
+  if (sameMonth) {
+    return `Week of ${monday.getDate()} - ${sunday.getDate()} ${monthFormatter.format(sunday)}`
+  }
+
+  return `Week of ${monday.getDate()} ${monthFormatter.format(monday)} - ${sunday.getDate()} ${monthFormatter.format(sunday)}`
+})
 
 onMounted(async () => {
   await fetchWigs()
@@ -36,17 +51,21 @@ async function logout() {
             <UIcon name="i-lucide-target" class="size-5" />
           </div>
           <div class="space-y-1">
-            <p class="text-sm font-medium text-toned">4DX Command Center</p>
             <h1 class="text-2xl font-semibold text-highlighted">
-              WIG dashboard
+              4 Disciplines
             </h1>
-            <p class="text-sm text-muted">
-              Select a wildly important goal to open its workspace.
-            </p>
           </div>
         </div>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div class="rounded-xl border border-default bg-default px-4 py-3">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-calendar-range" class="size-4 text-primary" />
+              <p class="text-sm font-medium text-highlighted">
+                {{ weekLabel }}
+              </p>
+            </div>
+          </div>
           <UButton to="/wig" color="primary" icon="i-lucide-plus" label="Create WIG" />
           <div class="rounded-xl border border-default bg-default px-4 py-3">
             <p class="text-xs font-medium uppercase tracking-wide text-toned">
@@ -61,29 +80,7 @@ async function logout() {
       </UContainer>
     </div>
 
-    <UContainer class="grid gap-6 py-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-      <aside class="space-y-4">
-        <UCard>
-          <template #header>
-            <div class="space-y-1">
-              <p class="text-xs font-medium uppercase tracking-wide text-toned">
-                Week of
-              </p>
-              <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-calendar-range" class="size-4 text-primary" />
-                <p class="font-medium text-highlighted">
-                  {{ weekLabel }}
-                </p>
-              </div>
-            </div>
-          </template>
-
-          <p class="text-sm text-muted">
-            Choose a WIG card to open its detail page. Lead measures will hang off that page next.
-          </p>
-        </UCard>
-      </aside>
-
+    <UContainer class="py-6">
       <main class="space-y-6">
         <div class="flex items-center justify-between gap-4">
           <div>

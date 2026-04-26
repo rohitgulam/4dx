@@ -81,3 +81,12 @@ export async function updateLeadMeasureById(id: string, input: UpdateLeadMeasure
 
   return updatedLeadMeasure ?? null
 }
+
+export async function deleteLeadMeasureById(id: string) {
+  const [deletedLeadMeasure] = await useDrizzle()
+    .delete(leadMeasures)
+    .where(eq(leadMeasures.id, id))
+    .returning()
+
+  return deletedLeadMeasure ?? null
+}

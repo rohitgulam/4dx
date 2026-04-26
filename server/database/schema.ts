@@ -119,6 +119,32 @@ export const leadMeasures = pgTable(
   ]
 )
 
+export const weeklyAccountabilityStatusEnum = pgEnum('weekly_accountability_status', [
+  'winning',
+  'at-risk',
+  'behind'
+])
+
+export const weeklyAccountability = pgTable(
+  'weekly_accountability',
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    wigId: uuid('wig_id')
+      .notNull()
+      .references(() => wigs.id, { onDelete: 'cascade' }),
+    weekStartDate: timestamp('week_start_date', { withTimezone: true }).notNull(),
+    status: weeklyAccountabilityStatusEnum('status').notNull().default('at-risk'),
+    summary: text().notNull(),
+    nextCommitment: text('next_commitment'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => [
+    index('weekly_accountability_wig_id_idx').on(table.wigId),
+    unique().on(table.wigId, table.weekStartDate)
+  ]
+)
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 
@@ -136,3 +162,6 @@ export type NewWig = typeof wigs.$inferInsert
 
 export type LeadMeasure = typeof leadMeasures.$inferSelect
 export type NewLeadMeasure = typeof leadMeasures.$inferInsert
+
+export type WeeklyAccountability = typeof weeklyAccountability.$inferSelect
+export type NewWeeklyAccountability = typeof weeklyAccountability.$inferInsert

@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { h, resolveComponent } from 'vue'
+import type { TableColumn } from '@nuxt/ui'
+
 definePageMeta({
-  layout: false
+  layout: false,
 })
 
 const route = useRoute()
@@ -12,10 +15,24 @@ const {
   fetchLeadMeasures,
   createLeadMeasure,
   updateLeadMeasure,
-  pending: leadMeasurePending
+  deleteLeadMeasure,
+  pending: leadMeasurePending,
 } = useLeadMeasure()
+const {
+  entries: weeklyAccountabilityEntries,
+  fetchWeeklyAccountability,
+  createWeeklyAccountability,
+  updateWeeklyAccountability,
+  deleteWeeklyAccountability,
+  pending: weeklyAccountabilityPending,
+} = useWeeklyAccountability()
 
 type LeadMeasureStatus = 'scheduled' | 'completed'
+type LeadMeasureView = 'cards' | 'table'
+type WeeklyAccountabilityStatus = 'winning' | 'at-risk' | 'behind'
+
+const UButton = resolveComponent('UButton')
+const UBadge = resolveComponent('UBadge')
 
 const wigId = computed(() => String(route.params.id || ''))
 
@@ -26,7 +43,7 @@ const wigView = reactive({
   targetValue: 0,
   unit: '',
   deadline: '',
-  completedAt: null as string | null
+  completedAt: null as string | null,
 })
 
 const editWigForm = reactive({
@@ -36,19 +53,35 @@ const editWigForm = reactive({
   targetValue: 0,
   unit: '',
   deadline: '',
-  completed: false
+  completed: false,
 })
 
 const leadMeasureForm = reactive({
   title: '',
   description: '',
   status: 'scheduled' as LeadMeasureStatus,
-  scheduledDate: ''
+  scheduledDate: '',
+})
+
+const weeklyAccountabilityForm = reactive({
+  weekStartDate: '',
+  status: 'at-risk' as WeeklyAccountabilityStatus,
+  summary: '',
+  nextCommitment: '',
 })
 
 const wigModalOpen = ref(false)
 const leadMeasureModalOpen = ref(false)
+const weeklyAccountabilityModalOpen = ref(false)
 const editingLeadMeasureId = ref<string | null>(null)
+const editingWeeklyAccountabilityId = ref<string | null>(null)
+const leadMeasureView = ref<LeadMeasureView>('cards')
+const leadMeasureSorting = ref([
+  {
+    id: 'scheduledDate',
+    desc: false,
+  },
+])
 
 const progress = computed(() => {
   return Math.max(
@@ -57,22 +90,23 @@ const progress = computed(() => {
   )
 })
 
-const completedLeadMeasures = computed(() =>
-  leadMeasures.value.filter(leadMeasure => leadMeasure.status === 'completed').length
+const completedLeadMeasures = computed(
+  () => leadMeasures.value.filter((leadMeasure) => leadMeasure.status === 'completed').length
 )
 
-const scheduledLeadMeasures = computed(() =>
-  leadMeasures.value.filter(leadMeasure => leadMeasure.status === 'scheduled').length
+const scheduledLeadMeasures = computed(
+  () => leadMeasures.value.filter((leadMeasure) => leadMeasure.status === 'scheduled').length
 )
 
 const remainingToGoal = computed(() => Math.max(wigView.targetValue - wigView.currentValue, 0))
+const totalLeadMeasures = computed(() => leadMeasures.value.length)
 
 const wigStatus = computed(() => {
   if (wigView.completedAt) {
     return {
       label: 'Completed',
       color: 'success' as const,
-      description: `Finished on ${formatDate(wigView.completedAt)}`
+      description: `Finished on ${formatDate(wigView.completedAt)}`,
     }
   }
 
@@ -80,7 +114,7 @@ const wigStatus = computed(() => {
     return {
       label: 'Close',
       color: 'primary' as const,
-      description: `${remainingToGoal.value} ${wigView.unit} left to hit the goal`
+      description: `${remainingToGoal.value} ${wigView.unit} left to hit the goal`,
     }
   }
 
@@ -88,20 +122,171 @@ const wigStatus = computed(() => {
     return {
       label: 'In Progress',
       color: 'warning' as const,
-      description: `${wigView.currentValue} of ${wigView.targetValue} ${wigView.unit}`
+      description: `${wigView.currentValue} of ${wigView.targetValue} ${wigView.unit}`,
     }
   }
 
   return {
     label: 'Starting',
     color: 'neutral' as const,
-    description: 'Early progress still counts. Keep the cadence going.'
+    description: `${wigView.currentValue} of ${wigView.targetValue} ${wigView.unit}`,
   }
+})
+
+const scoreboardStats = computed(() => {
+  const currentDelta =
+    wigView.startValue > 0
+      ? Math.round(((wigView.currentValue - wigView.startValue) / wigView.startValue) * 100)
+      : 0
+
+  const remainingVariation = -(100 - progress.value)
+  const leadMeasureVariation =
+    totalLeadMeasures.value > 0
+      ? Math.round((completedLeadMeasures.value / totalLeadMeasures.value) * 100)
+      : 0
+
+  return [
+    {
+      icon: 'i-lucide-flag',
+      title: 'Goal',
+      value: `${wigView.startValue} -> ${wigView.targetValue}`,
+      variation: progress.value,
+    },
+    {
+      icon: 'i-lucide-trending-up',
+      title: 'Current Progress',
+      value: `${wigView.currentValue} ${wigView.unit}`,
+      variation: currentDelta,
+    },
+    {
+      icon: 'i-lucide-target',
+      title: 'Remaining',
+      value: `${remainingToGoal.value} ${wigView.unit}`,
+      variation: remainingVariation,
+    },
+    {
+      icon: 'i-lucide-list-checks',
+      title: 'Lead Measures',
+      value: `${completedLeadMeasures.value}/${totalLeadMeasures.value}`,
+      variation: leadMeasureVariation,
+    },
+  ]
 })
 
 const leadMeasureModalTitle = computed(() =>
   editingLeadMeasureId.value ? 'Edit Lead Measure' : 'New Lead Measure'
 )
+const weeklyAccountabilityModalTitle = computed(() =>
+  editingWeeklyAccountabilityId.value ? 'Edit Weekly Accountability' : 'New Weekly Accountability'
+)
+
+const leadMeasureColumns: TableColumn<(typeof leadMeasures.value)[number]>[] = [
+  {
+    accessorKey: 'title',
+    header: 'Title',
+    cell: ({ row }) =>
+      h('div', { class: 'space-y-1' }, [
+        h('p', { class: 'font-medium text-highlighted' }, row.original.title),
+        h(
+          'p',
+          { class: 'text-sm text-muted' },
+          row.original.description || 'No description'
+        ),
+      ]),
+  },
+  {
+    accessorKey: 'status',
+    header: ({ column }) =>
+      h(UButton, {
+        color: 'neutral',
+        variant: 'ghost',
+        label: 'Status',
+        trailingIcon:
+          column.getIsSorted() === 'asc'
+            ? 'i-lucide-arrow-up'
+            : column.getIsSorted() === 'desc'
+              ? 'i-lucide-arrow-down'
+              : 'i-lucide-arrow-up-down',
+        class: '-mx-2.5',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+      }),
+    cell: ({ row }) =>
+      h(
+        UBadge,
+        {
+          color: statusColor(row.original.status),
+          variant: 'subtle',
+        },
+        () => row.original.status
+      ),
+  },
+  {
+    accessorKey: 'scheduledDate',
+    header: ({ column }) =>
+      h(UButton, {
+        color: 'neutral',
+        variant: 'ghost',
+        label: 'Scheduled',
+        trailingIcon:
+          column.getIsSorted() === 'asc'
+            ? 'i-lucide-arrow-up'
+            : column.getIsSorted() === 'desc'
+              ? 'i-lucide-arrow-down'
+              : 'i-lucide-arrow-up-down',
+        class: '-mx-2.5',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+      }),
+    cell: ({ row }) => formatDate(row.original.scheduledDate),
+  },
+  {
+    accessorKey: 'completedAt',
+    header: ({ column }) =>
+      h(UButton, {
+        color: 'neutral',
+        variant: 'ghost',
+        label: 'Completed',
+        trailingIcon:
+          column.getIsSorted() === 'asc'
+            ? 'i-lucide-arrow-up'
+            : column.getIsSorted() === 'desc'
+              ? 'i-lucide-arrow-down'
+              : 'i-lucide-arrow-up-down',
+        class: '-mx-2.5',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+      }),
+    cell: ({ row }) => formatDate(row.original.completedAt),
+  },
+  {
+    id: 'actions',
+    cell: ({ row }) =>
+      h('div', { class: 'flex items-center justify-end gap-2' }, [
+        row.original.status !== 'completed'
+          ? h(UButton, {
+              color: 'success',
+              variant: 'soft',
+              icon: 'i-lucide-check',
+              size: 'sm',
+              'aria-label': 'Mark complete',
+              onClick: () => markLeadMeasureCompleted(row.original.id),
+            })
+          : null,
+        h(UButton, {
+          color: 'neutral',
+          variant: 'subtle',
+          icon: 'i-lucide-pencil-line',
+          size: 'sm',
+          'aria-label': 'Edit lead measure',
+          onClick: () => openEditLeadMeasureModal(row.original),
+        }),
+      ].filter(Boolean)),
+    meta: {
+      class: {
+        th: 'w-24',
+        td: 'text-right',
+      },
+    },
+  },
+]
 
 function syncWigView(record: Awaited<ReturnType<ReturnType<typeof useWig>['fetchWig']>>) {
   if (!record) {
@@ -123,12 +308,13 @@ async function loadPage() {
   if (!existingWig) {
     throw createError({
       statusCode: 404,
-      statusMessage: 'WIG not found'
+      statusMessage: 'WIG not found',
     })
   }
 
   syncWigView(existingWig)
   await fetchLeadMeasures(wigId.value)
+  await fetchWeeklyAccountability(wigId.value)
 }
 
 onMounted(loadPage)
@@ -141,12 +327,24 @@ function formatDate(date: string | null) {
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
   })
 }
 
 function statusColor(status: LeadMeasureStatus) {
   return status === 'completed' ? 'success' : 'warning'
+}
+
+function weeklyStatusColor(status: WeeklyAccountabilityStatus) {
+  if (status === 'winning') {
+    return 'success'
+  }
+
+  if (status === 'at-risk') {
+    return 'warning'
+  }
+
+  return 'error'
 }
 
 function resetLeadMeasureForm() {
@@ -155,6 +353,14 @@ function resetLeadMeasureForm() {
   leadMeasureForm.status = 'scheduled'
   leadMeasureForm.scheduledDate = new Date().toISOString().slice(0, 10)
   editingLeadMeasureId.value = null
+}
+
+function resetWeeklyAccountabilityForm() {
+  weeklyAccountabilityForm.weekStartDate = new Date().toISOString().slice(0, 10)
+  weeklyAccountabilityForm.status = 'at-risk'
+  weeklyAccountabilityForm.summary = ''
+  weeklyAccountabilityForm.nextCommitment = ''
+  editingWeeklyAccountabilityId.value = null
 }
 
 function openWigModal() {
@@ -173,6 +379,11 @@ function openCreateLeadMeasureModal() {
   leadMeasureModalOpen.value = true
 }
 
+function openCreateWeeklyAccountabilityModal() {
+  resetWeeklyAccountabilityForm()
+  weeklyAccountabilityModalOpen.value = true
+}
+
 function openEditLeadMeasureModal(leadMeasure: {
   id: string
   title: string
@@ -188,6 +399,41 @@ function openEditLeadMeasureModal(leadMeasure: {
   leadMeasureModalOpen.value = true
 }
 
+function openEditWeeklyAccountabilityModal(entry: {
+  id: string
+  weekStartDate: string
+  status: WeeklyAccountabilityStatus
+  summary: string
+  nextCommitment: string | null
+}) {
+  editingWeeklyAccountabilityId.value = entry.id
+  weeklyAccountabilityForm.weekStartDate = entry.weekStartDate.slice(0, 10)
+  weeklyAccountabilityForm.status = entry.status
+  weeklyAccountabilityForm.summary = entry.summary
+  weeklyAccountabilityForm.nextCommitment = entry.nextCommitment ?? ''
+  weeklyAccountabilityModalOpen.value = true
+}
+
+async function markLeadMeasureCompleted(leadMeasureId: string) {
+  try {
+    await updateLeadMeasure(wigId.value, leadMeasureId, {
+      status: 'completed'
+    })
+
+    toast.add({
+      title: 'Lead measure completed',
+      description: 'Progress recorded on the scoreboard.',
+      color: 'success'
+    })
+  } catch {
+    toast.add({
+      title: 'Unable to complete lead measure',
+      description: 'Please try again.',
+      color: 'error'
+    })
+  }
+}
+
 async function saveWig() {
   try {
     const updatedWig = await updateWig(wigId.value, {
@@ -197,7 +443,7 @@ async function saveWig() {
       targetValue: editWigForm.targetValue,
       unit: editWigForm.unit,
       deadline: editWigForm.deadline,
-      completed: editWigForm.completed
+      completed: editWigForm.completed,
     })
 
     syncWigView(updatedWig)
@@ -206,13 +452,13 @@ async function saveWig() {
     toast.add({
       title: 'WIG updated',
       description: 'Scoreboard refreshed.',
-      color: 'success'
+      color: 'success',
     })
   } catch {
     toast.add({
       title: 'Unable to update WIG',
       description: 'Please try again.',
-      color: 'error'
+      color: 'error',
     })
   }
 }
@@ -224,14 +470,14 @@ async function removeWig() {
     toast.add({
       title: 'WIG deleted',
       description: 'The goal has been removed.',
-      color: 'success'
+      color: 'success',
     })
     await router.push('/dashboard')
   } catch {
     toast.add({
       title: 'Unable to delete WIG',
       description: 'Please try again.',
-      color: 'error'
+      color: 'error',
     })
   }
 }
@@ -245,14 +491,14 @@ async function saveLeadMeasure() {
         title: leadMeasureForm.title,
         description: leadMeasureForm.description || null,
         status: leadMeasureForm.status,
-        scheduledDate: leadMeasureForm.scheduledDate
+        scheduledDate: leadMeasureForm.scheduledDate,
       })
     } else {
       await createLeadMeasure(wigId.value, {
         title: leadMeasureForm.title,
         description: leadMeasureForm.description || null,
         status: leadMeasureForm.status,
-        scheduledDate: leadMeasureForm.scheduledDate
+        scheduledDate: leadMeasureForm.scheduledDate,
       })
     }
 
@@ -262,13 +508,98 @@ async function saveLeadMeasure() {
     toast.add({
       title: isEditing ? 'Lead measure updated' : 'Lead measure created',
       description: 'The WIG plan was updated.',
-      color: 'success'
+      color: 'success',
     })
   } catch {
     toast.add({
       title: 'Unable to save lead measure',
       description: 'Please try again.',
-      color: 'error'
+      color: 'error',
+    })
+  }
+}
+
+async function removeLeadMeasure() {
+  if (!editingLeadMeasureId.value) {
+    return
+  }
+
+  try {
+    await deleteLeadMeasure(wigId.value, editingLeadMeasureId.value)
+    leadMeasureModalOpen.value = false
+    resetLeadMeasureForm()
+
+    toast.add({
+      title: 'Lead measure deleted',
+      description: 'The lead measure has been removed.',
+      color: 'success',
+    })
+  } catch {
+    toast.add({
+      title: 'Unable to delete lead measure',
+      description: 'Please try again.',
+      color: 'error',
+    })
+  }
+}
+
+async function saveWeeklyAccountability() {
+  try {
+    const isEditing = Boolean(editingWeeklyAccountabilityId.value)
+
+    if (editingWeeklyAccountabilityId.value) {
+      await updateWeeklyAccountability(wigId.value, editingWeeklyAccountabilityId.value, {
+        weekStartDate: weeklyAccountabilityForm.weekStartDate,
+        status: weeklyAccountabilityForm.status,
+        summary: weeklyAccountabilityForm.summary,
+        nextCommitment: weeklyAccountabilityForm.nextCommitment || null,
+      })
+    } else {
+      await createWeeklyAccountability(wigId.value, {
+        weekStartDate: weeklyAccountabilityForm.weekStartDate,
+        status: weeklyAccountabilityForm.status,
+        summary: weeklyAccountabilityForm.summary,
+        nextCommitment: weeklyAccountabilityForm.nextCommitment || null,
+      })
+    }
+
+    weeklyAccountabilityModalOpen.value = false
+    resetWeeklyAccountabilityForm()
+
+    toast.add({
+      title: isEditing ? 'Weekly accountability updated' : 'Weekly accountability created',
+      description: 'Weekly review saved.',
+      color: 'success',
+    })
+  } catch {
+    toast.add({
+      title: 'Unable to save weekly accountability',
+      description: 'Please try again.',
+      color: 'error',
+    })
+  }
+}
+
+async function removeWeeklyAccountability() {
+  if (!editingWeeklyAccountabilityId.value) {
+    return
+  }
+
+  try {
+    await deleteWeeklyAccountability(wigId.value, editingWeeklyAccountabilityId.value)
+    weeklyAccountabilityModalOpen.value = false
+    resetWeeklyAccountabilityForm()
+
+    toast.add({
+      title: 'Weekly accountability deleted',
+      description: 'The weekly review has been removed.',
+      color: 'success',
+    })
+  } catch {
+    toast.add({
+      title: 'Unable to delete weekly accountability',
+      description: 'Please try again.',
+      color: 'error',
     })
   }
 }
@@ -279,7 +610,9 @@ async function saveLeadMeasure() {
     <div class="border-b border-default bg-elevated/80 backdrop-blur">
       <UContainer class="flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex items-start gap-3">
-          <div class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/20">
+          <div
+            class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/20"
+          >
             <UIcon name="i-lucide-target" class="size-5" />
           </div>
           <div class="space-y-1">
@@ -299,89 +632,79 @@ async function saveLeadMeasure() {
         </div>
 
         <div class="flex items-center gap-2">
-          <UButton to="/dashboard" color="neutral" variant="subtle" icon="i-lucide-arrow-left" label="Back to dashboard" />
-          <UButton color="primary" icon="i-lucide-pencil-line" label="Edit WIG" @click="openWigModal" />
+          <UButton
+            to="/dashboard"
+            color="neutral"
+            variant="subtle"
+            icon="i-lucide-arrow-left"
+            label="Back to dashboard"
+          />
+          <UButton
+            color="primary"
+            icon="i-lucide-pencil-line"
+            label="Edit WIG"
+            @click="openWigModal"
+          />
         </div>
       </UContainer>
     </div>
 
     <UContainer class="space-y-6 py-6">
-      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <UCard>
-          <template #header>
-            <p class="text-xs font-medium uppercase tracking-wide text-toned">Goal</p>
-          </template>
-          <p class="text-2xl font-semibold text-highlighted">
-            {{ wigView.startValue }} -> {{ wigView.targetValue }}
-          </p>
-          <p class="mt-1 text-sm text-muted">
-            {{ wigView.unit }}
-          </p>
-        </UCard>
+      <UPageGrid class="gap-4 sm:gap-6 lg:grid-cols-4 lg:gap-px">
+        <UPageCard
+          v-for="(stat, index) in scoreboardStats"
+          :key="index"
+          :icon="stat.icon"
+          :title="stat.title"
+          variant="subtle"
+          :ui="{
+            container: 'gap-y-1.5',
+            wrapper: 'items-start',
+            leading: 'p-2.5 rounded-full bg-primary/10 ring ring-inset ring-primary/25 flex-col',
+            title: 'font-normal text-muted text-xs uppercase',
+          }"
+          class="lg:rounded-none first:rounded-l-lg last:rounded-r-lg"
+        >
+          <div class="flex items-center gap-2">
+            <span class="text-2xl font-semibold text-highlighted">
+              {{ stat.value }}
+            </span>
 
-        <UCard>
-          <template #header>
-            <p class="text-xs font-medium uppercase tracking-wide text-toned">Current</p>
-          </template>
-          <p class="text-2xl font-semibold text-highlighted">
-            {{ wigView.currentValue }}
-          </p>
-          <p class="mt-1 text-sm text-muted">
-            {{ wigView.unit }} completed so far
-          </p>
-        </UCard>
+            <UBadge
+              :color="stat.variation > 0 ? 'success' : 'error'"
+              variant="subtle"
+              class="text-xs"
+            >
+              {{ stat.variation > 0 ? '+' : '' }}{{ stat.variation }}%
+            </UBadge>
+          </div>
+        </UPageCard>
+      </UPageGrid>
 
-        <UCard>
-          <template #header>
-            <p class="text-xs font-medium uppercase tracking-wide text-toned">Remaining</p>
-          </template>
-          <p class="text-2xl font-semibold text-highlighted">
-            {{ remainingToGoal }}
-          </p>
-          <p class="mt-1 text-sm text-muted">
-            {{ wigView.unit }} left to hit target
-          </p>
-        </UCard>
-
-        <UCard>
-          <template #header>
-            <p class="text-xs font-medium uppercase tracking-wide text-toned">Deadline</p>
-          </template>
-          <p class="text-2xl font-semibold text-highlighted">
-            {{ formatDate(wigView.deadline) }}
-          </p>
-          <p class="mt-1 text-sm text-muted">
-            {{ wigView.completedAt ? `Completed ${formatDate(wigView.completedAt)}` : 'Still active' }}
-          </p>
-        </UCard>
-      </div>
-
-      <div class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+      <div class="grid gap-6">
         <div class="space-y-6">
           <UCard>
             <template #header>
               <div class="flex items-center justify-between gap-4">
                 <div class="space-y-1">
                   <p class="text-xs font-medium uppercase tracking-wide text-toned">Scoreboard</p>
-                  <p class="font-medium text-highlighted">Visible progress that keeps the WIG alive.</p>
+                  <p class="font-medium text-highlighted">Progress</p>
                 </div>
-                <UBadge :color="wigStatus.color" variant="soft" size="lg">
-                  {{ progress }}%
-                </UBadge>
+                <UBadge :color="wigStatus.color" variant="soft" size="lg"> {{ progress }}% </UBadge>
               </div>
             </template>
 
             <div class="space-y-5">
-              <div class="rounded-3xl border border-default bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6">
+              <div
+                class="rounded-3xl border border-default bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6"
+              >
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div class="space-y-2">
                     <p class="text-xs font-medium uppercase tracking-wide text-toned">Momentum</p>
                     <p class="text-4xl font-semibold text-highlighted">
                       {{ wigView.currentValue }} / {{ wigView.targetValue }}
                     </p>
-                    <p class="text-sm text-muted">
-                      Every update makes the scoreboard more believable. Keep it moving.
-                    </p>
+                    <p class="text-sm text-muted">{{ wigView.unit }}</p>
                   </div>
                   <div class="rounded-2xl bg-default px-4 py-3 ring-1 ring-inset ring-default">
                     <p class="text-xs font-medium uppercase tracking-wide text-toned">Status</p>
@@ -395,7 +718,9 @@ async function saveLeadMeasure() {
               <div class="space-y-2">
                 <div class="flex items-center justify-between gap-4 text-sm">
                   <span class="font-medium text-highlighted">Progress toward target</span>
-                  <span class="text-muted">{{ wigView.currentValue }} / {{ wigView.targetValue }} {{ wigView.unit }}</span>
+                  <span class="text-muted"
+                    >{{ wigView.currentValue }} / {{ wigView.targetValue }} {{ wigView.unit }}</span
+                  >
                 </div>
                 <UProgress :model-value="progress" color="primary" />
               </div>
@@ -403,15 +728,21 @@ async function saveLeadMeasure() {
               <div class="grid gap-3 md:grid-cols-3">
                 <div class="rounded-2xl border border-default bg-muted/20 p-4">
                   <p class="text-xs font-medium uppercase tracking-wide text-toned">Started</p>
-                  <p class="mt-2 text-xl font-semibold text-highlighted">{{ wigView.startValue }}</p>
+                  <p class="mt-2 text-xl font-semibold text-highlighted">
+                    {{ wigView.startValue }}
+                  </p>
                 </div>
                 <div class="rounded-2xl border border-default bg-muted/20 p-4">
                   <p class="text-xs font-medium uppercase tracking-wide text-toned">Current</p>
-                  <p class="mt-2 text-xl font-semibold text-highlighted">{{ wigView.currentValue }}</p>
+                  <p class="mt-2 text-xl font-semibold text-highlighted">
+                    {{ wigView.currentValue }}
+                  </p>
                 </div>
                 <div class="rounded-2xl border border-default bg-muted/20 p-4">
                   <p class="text-xs font-medium uppercase tracking-wide text-toned">Target</p>
-                  <p class="mt-2 text-xl font-semibold text-highlighted">{{ wigView.targetValue }}</p>
+                  <p class="mt-2 text-xl font-semibold text-highlighted">
+                    {{ wigView.targetValue }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -421,25 +752,39 @@ async function saveLeadMeasure() {
             <template #header>
               <div class="flex items-center justify-between gap-4">
                 <div class="space-y-1">
-                  <p class="text-xs font-medium uppercase tracking-wide text-toned">Lead Measures</p>
-                  <p class="font-medium text-highlighted">Simple scheduled actions that move the goal.</p>
+                  <p class="text-xs font-medium uppercase tracking-wide text-toned">
+                    Lead Measures
+                  </p>
+                  <p class="font-medium text-highlighted">Actions</p>
                 </div>
-                <UButton color="primary" icon="i-lucide-plus" label="Add Lead Measure" @click="openCreateLeadMeasureModal" />
+                <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-1 rounded-lg border border-default p-1">
+                    <UButton
+                      :color="leadMeasureView === 'cards' ? 'primary' : 'neutral'"
+                      :variant="leadMeasureView === 'cards' ? 'soft' : 'ghost'"
+                      icon="i-lucide-layout-grid"
+                      size="sm"
+                      @click="leadMeasureView = 'cards'"
+                    />
+                    <UButton
+                      :color="leadMeasureView === 'table' ? 'primary' : 'neutral'"
+                      :variant="leadMeasureView === 'table' ? 'soft' : 'ghost'"
+                      icon="i-lucide-table-properties"
+                      size="sm"
+                      @click="leadMeasureView = 'table'"
+                    />
+                  </div>
+                  <UButton
+                    color="primary"
+                    icon="i-lucide-plus"
+                    label="Add Lead Measure"
+                    @click="openCreateLeadMeasureModal"
+                  />
+                </div>
               </div>
             </template>
 
-            <div class="grid gap-3 sm:grid-cols-2">
-              <div class="rounded-2xl border border-default bg-muted/20 p-4">
-                <p class="text-xs font-medium uppercase tracking-wide text-toned">Scheduled</p>
-                <p class="mt-2 text-2xl font-semibold text-highlighted">{{ scheduledLeadMeasures }}</p>
-              </div>
-              <div class="rounded-2xl border border-default bg-muted/20 p-4">
-                <p class="text-xs font-medium uppercase tracking-wide text-toned">Completed</p>
-                <p class="mt-2 text-2xl font-semibold text-highlighted">{{ completedLeadMeasures }}</p>
-              </div>
-            </div>
-
-            <div class="mt-4 space-y-3">
+            <div v-if="leadMeasureView === 'cards'" class="mt-4 space-y-3">
               <div
                 v-if="leadMeasures.length === 0 && !leadMeasurePending"
                 class="rounded-2xl border border-dashed border-default bg-muted/20 p-8 text-center"
@@ -474,49 +819,110 @@ async function saveLeadMeasure() {
                     </div>
                   </div>
 
+                  <div class="flex items-center gap-2">
+                    <UButton
+                      v-if="leadMeasure.status !== 'completed'"
+                      color="success"
+                      variant="soft"
+                      icon="i-lucide-check"
+                      label="Mark complete"
+                      :loading="leadMeasurePending"
+                      @click="markLeadMeasureCompleted(leadMeasure.id)"
+                    />
+                    <UButton
+                      color="neutral"
+                      variant="subtle"
+                      icon="i-lucide-pencil-line"
+                      label="Edit"
+                      @click="openEditLeadMeasureModal(leadMeasure)"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-else-if="leadMeasures.length === 0 && !leadMeasurePending"
+              class="mt-4 rounded-2xl border border-dashed border-default bg-muted/20 p-8 text-center"
+            >
+              <p class="font-medium text-highlighted">No lead measures yet</p>
+              <p class="mt-2 text-sm text-muted">
+                Add the few actions that actually create progress on this WIG.
+              </p>
+            </div>
+
+            <div v-else class="mt-4 overflow-hidden rounded-2xl border border-default">
+              <UTable
+                v-model:sorting="leadMeasureSorting"
+                :data="leadMeasures"
+                :columns="leadMeasureColumns"
+                class="flex-1"
+              />
+            </div>
+          </UCard>
+
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between gap-4">
+                <div class="space-y-1">
+                  <p class="text-xs font-medium uppercase tracking-wide text-toned">
+                    Cadence of Weekly Accountability
+                  </p>
+                  <p class="font-medium text-highlighted">Weekly review</p>
+                </div>
+                <UButton
+                  color="primary"
+                  icon="i-lucide-plus"
+                  label="Add Weekly Review"
+                  @click="openCreateWeeklyAccountabilityModal"
+                />
+              </div>
+            </template>
+
+            <div
+              v-if="weeklyAccountabilityEntries.length === 0 && !weeklyAccountabilityPending"
+              class="rounded-2xl border border-dashed border-default bg-muted/20 p-8 text-center"
+            >
+              <p class="font-medium text-highlighted">No weekly accountability yet</p>
+              <p class="mt-2 text-sm text-muted">
+                Add at least one end-of-week review for this WIG.
+              </p>
+            </div>
+
+            <div v-else class="space-y-3">
+              <div
+                v-for="entry in weeklyAccountabilityEntries"
+                :key="entry.id"
+                class="rounded-2xl border border-default p-4"
+              >
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                      <p class="font-medium text-highlighted">
+                        Week of {{ formatDate(entry.weekStartDate) }}
+                      </p>
+                      <UBadge :color="weeklyStatusColor(entry.status)" variant="subtle">
+                        {{ entry.status }}
+                      </UBadge>
+                    </div>
+                    <p class="text-sm text-muted">
+                      {{ entry.summary }}
+                    </p>
+                    <p v-if="entry.nextCommitment" class="text-sm text-toned">
+                      Next commitment: {{ entry.nextCommitment }}
+                    </p>
+                  </div>
+
                   <UButton
                     color="neutral"
                     variant="subtle"
                     icon="i-lucide-pencil-line"
                     label="Edit"
-                    @click="openEditLeadMeasureModal(leadMeasure)"
+                    @click="openEditWeeklyAccountabilityModal(entry)"
                   />
                 </div>
               </div>
             </div>
-          </UCard>
-        </div>
-
-        <div class="space-y-6">
-          <UCard>
-            <template #header>
-              <p class="font-medium text-highlighted">Quick signal</p>
-            </template>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between gap-4">
-                <span class="text-sm text-muted">Completion</span>
-                <UBadge :color="wigStatus.color" variant="subtle">
-                  {{ wigStatus.label }}
-                </UBadge>
-              </div>
-              <div class="flex items-center justify-between gap-4">
-                <span class="text-sm text-muted">Deadline</span>
-                <span class="text-sm font-medium text-highlighted">{{ formatDate(wigView.deadline) }}</span>
-              </div>
-              <div class="flex items-center justify-between gap-4">
-                <span class="text-sm text-muted">Lead measures</span>
-                <span class="text-sm font-medium text-highlighted">{{ leadMeasures.length }}</span>
-              </div>
-            </div>
-          </UCard>
-
-          <UCard>
-            <template #header>
-              <p class="font-medium text-highlighted">Keep going</p>
-            </template>
-            <p class="text-sm text-muted">
-              The scoreboard should feel alive. Update current value often, close lead measures, and let the visible progress pull you forward.
-            </p>
           </UCard>
         </div>
       </div>
@@ -526,33 +932,35 @@ async function saveLeadMeasure() {
       <template #body>
         <div class="space-y-4">
           <UFormField label="Title">
-            <UInput v-model="editWigForm.title" />
+            <UInput v-model="editWigForm.title" class="w-full" />
           </UFormField>
 
           <div class="grid gap-4 md:grid-cols-2">
             <UFormField label="Starting point">
-              <UInput v-model.number="editWigForm.startValue" type="number" />
+              <UInput v-model.number="editWigForm.startValue" class="w-full" type="number" />
             </UFormField>
             <UFormField label="Current value">
-              <UInput v-model.number="editWigForm.currentValue" type="number" />
+              <UInput v-model.number="editWigForm.currentValue" class="w-full" type="number" />
             </UFormField>
             <UFormField label="Target value">
-              <UInput v-model.number="editWigForm.targetValue" type="number" />
+              <UInput v-model.number="editWigForm.targetValue" class="w-full" type="number" />
             </UFormField>
             <UFormField label="Unit">
-              <UInput v-model="editWigForm.unit" />
+              <UInput v-model="editWigForm.unit" class="w-full" />
             </UFormField>
           </div>
 
           <UFormField label="Deadline">
-            <UInput v-model="editWigForm.deadline" type="date" />
+            <UInput v-model="editWigForm.deadline" class="w-full" type="date" />
           </UFormField>
 
           <div class="rounded-2xl border border-default p-4">
             <div class="flex items-center justify-between gap-4">
               <div>
                 <p class="font-medium text-highlighted">Mark as completed</p>
-                <p class="text-sm text-muted">Use this when the WIG is done, even if you want to keep the record.</p>
+                <p class="text-sm text-muted">
+                  Use this when the WIG is done, even if you want to keep the record.
+                </p>
               </div>
               <USwitch v-model="editWigForm.completed" />
             </div>
@@ -562,7 +970,14 @@ async function saveLeadMeasure() {
 
       <template #footer>
         <div class="flex w-full items-center justify-between gap-3">
-          <UButton color="error" variant="ghost" icon="i-lucide-trash-2" label="Delete WIG" :loading="wigPending" @click="removeWig" />
+          <UButton
+            color="error"
+            variant="ghost"
+            icon="i-lucide-trash-2"
+            label="Delete WIG"
+            :loading="wigPending"
+            @click="removeWig"
+          />
           <div class="flex gap-3">
             <UButton color="neutral" variant="ghost" label="Cancel" @click="wigModalOpen = false" />
             <UButton color="primary" label="Save" :loading="wigPending" @click="saveWig" />
@@ -575,15 +990,24 @@ async function saveLeadMeasure() {
       <template #body>
         <div class="space-y-4">
           <UFormField label="Title">
-            <UInput v-model="leadMeasureForm.title" placeholder="Book a school demo" />
+            <UInput
+              v-model="leadMeasureForm.title"
+              class="w-full"
+              placeholder="Book a school demo"
+            />
           </UFormField>
 
           <UFormField label="Description">
-            <UTextarea v-model="leadMeasureForm.description" :rows="3" placeholder="Optional context" />
+            <UTextarea
+              v-model="leadMeasureForm.description"
+              :rows="3"
+              placeholder="Optional context"
+              class="w-full"
+            />
           </UFormField>
 
           <UFormField label="Scheduled date">
-            <UInput v-model="leadMeasureForm.scheduledDate" type="date" />
+            <UInput v-model="leadMeasureForm.scheduledDate" class="w-full" type="date" />
           </UFormField>
 
           <UFormField label="Status">
@@ -610,9 +1034,109 @@ async function saveLeadMeasure() {
       </template>
 
       <template #footer>
-        <div class="flex justify-end gap-3">
-          <UButton color="neutral" variant="ghost" label="Cancel" @click="leadMeasureModalOpen = false" />
-          <UButton color="primary" label="Save" :loading="leadMeasurePending" @click="saveLeadMeasure" />
+        <div class="flex w-full items-center justify-between gap-3">
+          <UButton
+            v-if="editingLeadMeasureId"
+            color="error"
+            variant="ghost"
+            icon="i-lucide-trash-2"
+            label="Delete"
+            :loading="leadMeasurePending"
+            @click="removeLeadMeasure"
+          />
+          <div class="flex gap-3">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              label="Cancel"
+              @click="leadMeasureModalOpen = false"
+            />
+            <UButton
+              color="primary"
+              label="Save"
+              :loading="leadMeasurePending"
+              @click="saveLeadMeasure"
+            />
+          </div>
+        </div>
+      </template>
+    </UModal>
+
+    <UModal v-model:open="weeklyAccountabilityModalOpen" :title="weeklyAccountabilityModalTitle">
+      <template #body>
+        <div class="space-y-4">
+          <UFormField label="Week start date">
+            <UInput v-model="weeklyAccountabilityForm.weekStartDate" class="w-full" type="date" />
+          </UFormField>
+
+          <UFormField label="Status">
+            <div class="flex gap-2">
+              <UButton
+                :color="weeklyAccountabilityForm.status === 'winning' ? 'success' : 'neutral'"
+                :variant="weeklyAccountabilityForm.status === 'winning' ? 'soft' : 'outline'"
+                label="Winning"
+                @click="weeklyAccountabilityForm.status = 'winning'"
+              />
+              <UButton
+                :color="weeklyAccountabilityForm.status === 'at-risk' ? 'warning' : 'neutral'"
+                :variant="weeklyAccountabilityForm.status === 'at-risk' ? 'soft' : 'outline'"
+                label="At Risk"
+                @click="weeklyAccountabilityForm.status = 'at-risk'"
+              />
+              <UButton
+                :color="weeklyAccountabilityForm.status === 'behind' ? 'error' : 'neutral'"
+                :variant="weeklyAccountabilityForm.status === 'behind' ? 'soft' : 'outline'"
+                label="Behind"
+                @click="weeklyAccountabilityForm.status = 'behind'"
+              />
+            </div>
+          </UFormField>
+
+          <UFormField label="Summary">
+            <UTextarea
+              v-model="weeklyAccountabilityForm.summary"
+              :rows="4"
+              class="w-full"
+              placeholder="What happened this week?"
+            />
+          </UFormField>
+
+          <UFormField label="Next commitment">
+            <UTextarea
+              v-model="weeklyAccountabilityForm.nextCommitment"
+              :rows="3"
+              class="w-full"
+              placeholder="What will you commit to next week?"
+            />
+          </UFormField>
+        </div>
+      </template>
+
+      <template #footer>
+        <div class="flex w-full items-center justify-between gap-3">
+          <UButton
+            v-if="editingWeeklyAccountabilityId"
+            color="error"
+            variant="ghost"
+            icon="i-lucide-trash-2"
+            label="Delete"
+            :loading="weeklyAccountabilityPending"
+            @click="removeWeeklyAccountability"
+          />
+          <div class="flex gap-3">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              label="Cancel"
+              @click="weeklyAccountabilityModalOpen = false"
+            />
+            <UButton
+              color="primary"
+              label="Save"
+              :loading="weeklyAccountabilityPending"
+              @click="saveWeeklyAccountability"
+            />
+          </div>
         </div>
       </template>
     </UModal>

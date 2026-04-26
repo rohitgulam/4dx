@@ -29,6 +29,13 @@
       "when": 1775643807741,
       "tag": "0003_wig_completion",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1775643807742,
+      "tag": "0004_weekly_accountability",
+      "breakpoints": true
     }
   ]
 }
