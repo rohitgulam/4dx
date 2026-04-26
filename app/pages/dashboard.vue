@@ -6,6 +6,9 @@ definePageMeta({
 const { user, clear } = useUserSession()
 const { wigs, fetchWigs, pending } = useWig()
 
+const activeWigs = computed(() => wigs.value.filter(record => !record.completedAt))
+const completedWigs = computed(() => wigs.value.filter(record => record.completedAt))
+
 const weekLabel = computed(() => {
   const today = new Date()
   const day = today.getDay()
@@ -34,6 +37,14 @@ onMounted(async () => {
 
 function wigProgress(currentValue: number, targetValue: number) {
   return Math.max(0, Math.min(100, Math.round((currentValue / Math.max(targetValue, 1)) * 100)))
+}
+
+function formatDeadline(deadline: string) {
+  return new Date(deadline).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 async function logout() {
@@ -118,64 +129,130 @@ async function logout() {
           </div>
         </div>
 
-        <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <NuxtLink
-            v-for="record in wigs"
-            :key="record.id"
-            :to="`/wigs/${record.id}`"
-            class="block"
-          >
-            <UCard
-              class="h-full transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg"
-            >
-              <template #header>
-                <div class="flex items-start justify-between gap-3">
-                  <div class="space-y-1">
-                    <p class="text-xs font-medium uppercase tracking-wide text-toned">WIG</p>
-                    <h3 class="text-lg font-semibold text-highlighted">
-                      {{ record.title }}
-                    </h3>
+        <div v-else class="space-y-8">
+          <section v-if="activeWigs.length" class="space-y-4">
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-semibold uppercase tracking-wide text-toned">In progress</h3>
+              <UBadge size="sm" color="primary" variant="subtle">
+                {{ activeWigs.length }}
+              </UBadge>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <NuxtLink
+                v-for="record in activeWigs"
+                :key="record.id"
+                :to="`/wigs/${record.id}`"
+                class="block"
+              >
+                <UCard
+                  class="h-full transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg"
+                >
+                  <template #header>
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="space-y-1">
+                        <p class="text-xs font-medium uppercase tracking-wide text-toned">WIG</p>
+                        <h3 class="text-lg font-semibold text-highlighted">
+                          {{ record.title }}
+                        </h3>
+                      </div>
+                      <UIcon name="i-lucide-arrow-up-right" class="size-4 text-primary" />
+                    </div>
+                  </template>
+
+                  <div class="space-y-4">
+                    <div class="rounded-2xl border border-default bg-muted/30 p-4">
+                      <p class="text-sm font-medium text-highlighted">
+                        {{ record.startValue }} -> {{ record.targetValue }} {{ record.unit }}
+                      </p>
+                      <p class="mt-1 text-sm text-muted">
+                        Current: {{ record.currentValue }} {{ record.unit }}
+                      </p>
+                    </div>
+
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between gap-4 text-sm">
+                        <span class="font-medium text-highlighted">Progress</span>
+                        <span class="text-muted"
+                          >{{ wigProgress(record.currentValue, record.targetValue) }}%</span
+                        >
+                      </div>
+                      <UProgress
+                        :model-value="wigProgress(record.currentValue, record.targetValue)"
+                        color="primary"
+                      />
+                    </div>
+
+                    <div class="flex items-center justify-between gap-4 text-sm text-muted">
+                      <span>Deadline</span>
+                      <span>{{ formatDeadline(record.deadline) }}</span>
+                    </div>
                   </div>
-                  <UIcon name="i-lucide-arrow-up-right" class="size-4 text-primary" />
-                </div>
-              </template>
+                </UCard>
+              </NuxtLink>
+            </div>
+          </section>
 
-              <div class="space-y-4">
-                <div class="rounded-2xl border border-default bg-muted/30 p-4">
-                  <p class="text-sm font-medium text-highlighted">
-                    {{ record.startValue }} -> {{ record.targetValue }} {{ record.unit }}
-                  </p>
-                  <p class="mt-1 text-sm text-muted">
-                    Current: {{ record.currentValue }} {{ record.unit }}
-                  </p>
-                </div>
+          <section v-if="completedWigs.length" class="space-y-4">
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-semibold uppercase tracking-wide text-toned">Completed</h3>
+              <UBadge size="sm" color="success" variant="subtle">
+                {{ completedWigs.length }}
+              </UBadge>
+            </div>
 
-                <div class="space-y-2">
-                  <div class="flex items-center justify-between gap-4 text-sm">
-                    <span class="font-medium text-highlighted">Progress</span>
-                    <span class="text-muted"
-                      >{{ wigProgress(record.currentValue, record.targetValue) }}%</span
-                    >
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <NuxtLink
+                v-for="record in completedWigs"
+                :key="record.id"
+                :to="`/wigs/${record.id}`"
+                class="block"
+              >
+                <UCard
+                  class="h-full border-success/30 bg-success/5 transition hover:-translate-y-0.5 hover:border-success/50 hover:shadow-lg"
+                >
+                  <template #header>
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                          <p class="text-xs font-medium uppercase tracking-wide text-toned">WIG</p>
+                          <UBadge size="sm" color="success" variant="subtle">Completed</UBadge>
+                        </div>
+                        <h3 class="text-lg font-semibold text-highlighted">
+                          {{ record.title }}
+                        </h3>
+                      </div>
+                      <UIcon name="i-lucide-arrow-up-right" class="size-4 text-success" />
+                    </div>
+                  </template>
+
+                  <div class="space-y-4">
+                    <div class="rounded-2xl border border-success/20 bg-success/10 p-4">
+                      <p class="text-sm font-medium text-highlighted">
+                        {{ record.startValue }} -> {{ record.targetValue }} {{ record.unit }}
+                      </p>
+                      <p class="mt-1 text-sm text-muted">
+                        Final: {{ record.currentValue }} {{ record.unit }}
+                      </p>
+                    </div>
+
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between gap-4 text-sm">
+                        <span class="font-medium text-highlighted">Progress</span>
+                        <span class="text-success">100%</span>
+                      </div>
+                      <UProgress :model-value="100" color="success" />
+                    </div>
+
+                    <div class="flex items-center justify-between gap-4 text-sm text-muted">
+                      <span>Deadline</span>
+                      <span>{{ formatDeadline(record.deadline) }}</span>
+                    </div>
                   </div>
-                  <UProgress
-                    :model-value="wigProgress(record.currentValue, record.targetValue)"
-                    color="primary"
-                  />
-                </div>
-
-                <div class="flex items-center justify-between gap-4 text-sm text-muted">
-                  <span>Deadline</span>
-                  <span>{{
-                    new Date(record.deadline).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })
-                  }}</span>
-                </div>
-              </div>
-            </UCard>
-          </NuxtLink>
+                </UCard>
+              </NuxtLink>
+            </div>
+          </section>
         </div>
       </main>
     </UContainer>

@@ -69,7 +69,10 @@ export default defineEventHandler(async (event) => {
     description: parsed.data.description,
     unit: parsed.data.unit,
     startValue: parsed.data.startValue,
-    currentValue: parsed.data.currentValue,
+    currentValue:
+      parsed.data.completed === true
+        ? (parsed.data.targetValue ?? existingWig.targetValue)
+        : parsed.data.currentValue,
     targetValue: parsed.data.targetValue,
     deadline: parsed.data.deadline ? new Date(`${parsed.data.deadline}T00:00:00.000Z`) : undefined,
     completedAt:
