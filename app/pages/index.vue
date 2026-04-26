@@ -1,95 +1,57 @@
 <template>
   <div>
     <UPageHero
-      title="Nuxt Starter Template"
-      description="A production-ready starter template powered by Nuxt UI. Build beautiful, accessible, and performant applications in minutes, not hours."
+      title="4DX for founders, operators, and execution-focused teams"
+      description="A focused system for turning one wildly important goal into a weekly operating rhythm. Review the scoreboard, log the lead measures, and make next week’s commitments visible."
       :links="[
         {
-          label: 'Get started',
-          to: 'https://ui.nuxt.com/docs/getting-started/installation/nuxt',
-          target: '_blank',
+          label: 'Open dashboard',
+          to: '/login',
           trailingIcon: 'i-lucide-arrow-right',
           size: 'xl',
         },
         {
-          label: 'Use this template',
-          to: 'https://github.com/nuxt-ui-templates/starter',
-          target: '_blank',
-          icon: 'i-simple-icons-github',
+          label: 'Create account',
+          to: '/register',
+          icon: 'i-lucide-user-plus',
           size: 'xl',
           color: 'neutral',
           variant: 'subtle',
         },
       ]"
-    />
+    >
+      <template #headline>
+        <UBadge color="primary" variant="subtle" label="Nuxt UI prototype" />
+      </template>
+    </UPageHero>
 
     <UPageSection
-      id="features"
-      title="Everything you need to build modern Nuxt apps"
-      description="Start with a solid foundation. This template includes all the essentials for building production-ready applications with Nuxt UI's powerful component system."
+      title="Built around the four 4DX moments"
+      description="The UI maps directly to the concept: dashboard, WIG setup, daily execution, and weekly review."
       :features="[
         {
-          icon: 'i-lucide-rocket',
-          title: 'Production-ready from day one',
+          icon: 'i-lucide-layout-dashboard',
+          title: 'Dashboard',
           description:
-            'Pre-configured with TypeScript, ESLint, Tailwind CSS, and all the best practices. Focus on building features, not setting up tooling.',
+            'A single-screen scoreboard with lag and lead indicators, plus a quick daily pulse.',
         },
         {
-          icon: 'i-lucide-palette',
-          title: 'Beautiful by default',
-          description:
-            'Leveraging Nuxt UI\'s design system with automatic dark mode, consistent spacing, and polished components that look great out of the box.',
+          icon: 'i-lucide-flag',
+          title: 'WIG setup',
+          description: 'Define the main goal, set the deadline, and tune the weekly lead measures.',
         },
         {
-          icon: 'i-lucide-zap',
-          title: 'Lightning fast',
+          icon: 'i-lucide-calendar-days',
+          title: 'Daily log',
           description:
-            'Optimized for performance with SSR/SSG support, automatic code splitting, and edge-ready deployment. Your users will love the speed.',
+            'Capture the actions completed today and keep the running weekly total visible.',
         },
         {
-          icon: 'i-lucide-blocks',
-          title: '100+ components included',
-          description:
-            'Access Nuxt UI\'s comprehensive component library. From forms to navigation, everything is accessible, responsive, and customizable.',
-        },
-        {
-          icon: 'i-lucide-code-2',
-          title: 'Developer experience first',
-          description:
-            'Auto-imports, hot module replacement, and TypeScript support. Write less boilerplate and ship more features.',
-        },
-        {
-          icon: 'i-lucide-shield-check',
-          title: 'Built for scale',
-          description:
-            'Enterprise-ready architecture with proper error handling, SEO optimization, and security best practices built-in.',
+          icon: 'i-lucide-target',
+          title: 'Weekly review',
+          description: 'Compare commitments against outcomes and write the next set of promises.',
         },
       ]"
     />
-
-    <UPageSection>
-      <UPageCTA
-        title="Ready to build your next Nuxt app?"
-        description="Join thousands of developers building with Nuxt and Nuxt UI. Get this template and start shipping today."
-        variant="subtle"
-        :links="[
-          {
-            label: 'Start building',
-            to: 'https://ui.nuxt.com/docs/getting-started/installation/nuxt',
-            target: '_blank',
-            trailingIcon: 'i-lucide-arrow-right',
-            color: 'neutral',
-          },
-          {
-            label: 'View on GitHub',
-            to: 'https://github.com/nuxt-ui-templates/starter',
-            target: '_blank',
-            icon: 'i-simple-icons-github',
-            color: 'neutral',
-            variant: 'outline',
-          },
-        ]"
-      />
-    </UPageSection>
   </div>
 </template>
